@@ -61,37 +61,12 @@ int result_read(char *buffer, char **buffer_location,
 	int result;
 	int len;
 	
-// 	int sign;
-// 	int i;
-// 	int j;
-// 	char c;
-	/*
-	for(i = 0, j = 0; num_one_str[i] >= '0' && num_one_str[i] <= '9'; i++)
-		j = j * 10 + (num_one_str[i] - '0');
-	num_one = j;
-	for(i = 0, j = 0; num_two_str[i] >= '0' && num_two_str[i] <= '9'; i++)
-		j = j * 10 + (num_two_str[i] - '0');
-	num_two = j;*/
 	printk("%s", num_one_str);
  	sscanf(num_one_str, "%d", &num_one);
 	printk("num_one=%d", num_one);
 	sscanf(num_two_str, "%d", &num_two);
 	result = num_one + num_two;
 	sprintf(result_str, "%d", result);
-	/*if ((sign = result) < 0)  
-		result = -result;
-	i = 0;
-	do {
-		result_str[i++] = result % 10 + '0';
-	} while ((result /= 10) > 0);
-	if (sign < 0)
-	    result_str[i++] = '-';
-	result_str[i] = '\0';
-	for (i = 0, j = strlen(result_str)-1; i < j; i++, j--) {
-		c = result_str[i];
-		result_str[i] = result_str[j];
-		result_str[j] = c;
-	}*/
 	
 	len = strlen(result_str);
 	if (buffer_length < len)
