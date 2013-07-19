@@ -36,13 +36,23 @@ int result_read(char *buffer, char **buffer_location,
 	int result;
 	int len;
 	
-	printk("%s", num_one_str);
+	printk("%s ", num_one_str);
+	printk("%s ", operation_str);
+	printk("%s ", num_two_str);
  	sscanf(num_one_str, "%d", &num_one);
-	printk("num_one=%d", num_one);
 	sscanf(num_two_str, "%d", &num_two);
-	result = num_one + num_two;
+	if (operation_str[1] == '+')
+		result = num_one + num_two;
+	else if (operation_str[1] == '-')
+		result = num_one - num_two;
+	else if (operation_str[1] == '*')
+		result = num_one * num_two;
+	else if (operation_str[1] == '/' || operation_str[1] == ':')
+		result = num_one / num_two;
+	else 
+	  return 0;
+	printk("= %d",result);
 	sprintf(result_str, "%d", result);
-	
 	len = strlen(result_str);
 	if (buffer_length < len)
 		return -EINVAL;
