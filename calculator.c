@@ -8,6 +8,9 @@ static struct proc_dir_entry *Num_Two;
 static struct proc_dir_entry *Operation;
 static struct proc_dir_entry *Result;
 
+#define HAS_PROC
+#define HAS_SYS
+
 #define SIZE 100
 char num_one_str[SIZE];
 char num_two_str[SIZE];
@@ -23,6 +26,7 @@ int read_simbol(char *buffer, char **buffer_location,
 		return -EINVAL;
 	if (offset > 0) 
 		return 0;
+	printk("%s\n", buf_str);
 	strcpy(buffer,buf_str);
 	*eof = 1;
 	return len;
@@ -41,17 +45,22 @@ int result_read(char *buffer, char **buffer_location,
 	printk("%s ", num_two_str);
  	sscanf(num_one_str, "%d", &num_one);
 	sscanf(num_two_str, "%d", &num_two);
-	if (operation_str[1] == '+')
+	if (operation_str[0] == '+')
 		result = num_one + num_two;
-	else if (operation_str[1] == '-')
+	else if (operation_str[0] == '-')
 		result = num_one - num_two;
-	else if (operation_str[1] == '*')
+	else if (operation_str[0] == '*')
 		result = num_one * num_two;
-	else if (operation_str[1] == '/' || operation_str[1] == ':')
+	else if (operation_str[0] == '/' || operation_str[0] == ':'){
+		if (num_two == 0){
+			printk(KERN_ALERT "Error:division by zero \n");
+			return 0;
+		}
 		result = num_one / num_two;
+	}
 	else 
 	  return 0;
-	printk("= %d",result);
+	printk("= %d\n",result);
 	sprintf(result_str, "%d", result);
 	len = strlen(result_str);
 	if (buffer_length < len)
@@ -108,6 +117,7 @@ int init_module()
 		printk(KERN_ALERT "Error: Could not initialize /proc/num_one\n");
 		return -ENOMEM;
 	}
+	strcpy(buf_str, num_one_str);
 	Num_One->read_proc  = read_simbol;
 	Num_One->write_proc = num_one_write;
 	Num_One->mode 	  = S_IFREG | S_IRUGO;
@@ -121,6 +131,7 @@ int init_module()
 		printk(KERN_ALERT "Error: Could not initialize /proc/num_two\n");
 		return -ENOMEM;
 	}
+	strcpy(buf_str, num_two_str);
 	Num_Two->read_proc  = read_simbol;
 	Num_Two->write_proc = num_two_write;
 	Num_Two->mode 	  = S_IFREG | S_IRUGO;
@@ -134,6 +145,7 @@ int init_module()
 		printk(KERN_ALERT "Error: Could not initialize /proc/operation\n");
 		return -ENOMEM;
 	}
+	strcpy(buf_str, operation_str);
 	Operation->read_proc  = read_simbol;
 	Operation->write_proc = operation_write;
 	Operation->mode   = S_IFREG | S_IRUGO;
