@@ -13,42 +13,17 @@ char num_one_str[SIZE];
 char num_two_str[SIZE];
 char operation_str[SIZE];
 char result_str[SIZE];
+char buf_str[SIZE];
 
-int num_one_read(char *buffer, char **buffer_location,
+int read_simbol(char *buffer, char **buffer_location,
 	      off_t offset, int buffer_length, int *eof, void *data)
 {
-	int len = strlen(num_one_str);
+	int len = strlen(buf_str);
 	if (buffer_length < len)
 		return -EINVAL;
 	if (offset > 0) 
-	  return 0;
-	strcpy(buffer, num_one_str);
-	*eof = 1;
-	return len;
-}
-
-int num_two_read(char *buffer, char **buffer_location,
-	      off_t offset, int buffer_length, int *eof, void *data)
-{
-	int len = strlen(num_two_str);
-	if (buffer_length < len)
-		return -EINVAL;
-	if (offset > 0) 
-	  return 0;
-	strcpy(buffer, num_two_str);
-	*eof = 1;
-	return len;
-}
-
-int operation_read(char *buffer, char **buffer_location,
-	      off_t offset, int buffer_length, int *eof, void *data)
-{
-	int len = strlen(operation_str);
-	if (buffer_length < len)
-		return -EINVAL;
-	if (offset > 0) 
-	  return 0;
-	strcpy(buffer, operation_str);
+		return 0;
+	strcpy(buffer,buf_str);
 	*eof = 1;
 	return len;
 }
@@ -83,9 +58,8 @@ int num_one_write(struct file *file, const char *buffer, unsigned long count,
 		   void *data)
 {
 	int len = count;
-	if ( copy_from_user(num_one_str, buffer, len) ) {
+	if (copy_from_user(num_one_str, buffer, len))
 		return -EFAULT;
-	}
 	return len;
 }
 
@@ -93,9 +67,8 @@ int num_two_write(struct file *file, const char *buffer, unsigned long count,
 		   void *data)
 {
 	int len = count;
-	if ( copy_from_user(num_two_str, buffer, len) ) {
+	if (copy_from_user(num_two_str, buffer, len))
 		return -EFAULT;
-	}
 	return len;
 }
 
@@ -103,9 +76,8 @@ int operation_write(struct file *file, const char *buffer, unsigned long count,
 		   void *data)
 {
 	int len = count;
-	if ( copy_from_user(operation_str, buffer, len) ) {
+	if (copy_from_user(operation_str, buffer, len))
 		return -EFAULT;
-	}
 	return len;
 }
 
@@ -126,7 +98,7 @@ int init_module()
 		printk(KERN_ALERT "Error: Could not initialize /proc/num_one\n");
 		return -ENOMEM;
 	}
-	Num_One->read_proc  = num_one_read;
+	Num_One->read_proc  = read_simbol;
 	Num_One->write_proc = num_one_write;
 	Num_One->mode 	  = S_IFREG | S_IRUGO;
 	Num_One->uid 	  = 0;
@@ -139,7 +111,7 @@ int init_module()
 		printk(KERN_ALERT "Error: Could not initialize /proc/num_two\n");
 		return -ENOMEM;
 	}
-	Num_Two->read_proc  = num_two_read;
+	Num_Two->read_proc  = read_simbol;
 	Num_Two->write_proc = num_two_write;
 	Num_Two->mode 	  = S_IFREG | S_IRUGO;
 	Num_Two->uid 	  = 0;
@@ -152,7 +124,7 @@ int init_module()
 		printk(KERN_ALERT "Error: Could not initialize /proc/operation\n");
 		return -ENOMEM;
 	}
-	Operation->read_proc  = operation_read;
+	Operation->read_proc  = read_simbol;
 	Operation->write_proc = operation_write;
 	Operation->mode   = S_IFREG | S_IRUGO;
 	Operation->uid 	  = 0;
