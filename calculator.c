@@ -2,21 +2,66 @@
 #include <linux/module.h>
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
+#include <linux/fs.h>
+#include <linux/cdev.h>
+#include <linux/parport.h>
+#include <linux/pci.h>
+#include <linux/version.h>
 
-static struct proc_dir_entry *Num_One;
-static struct proc_dir_entry *Num_Two;
-static struct proc_dir_entry *Operation;
-static struct proc_dir_entry *Result;
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("max ");
+MODULE_DESCRIPTION("\"Calculator\" minimal module");
 
 #define HAS_PROC
 #define HAS_SYS
 
 #define SIZE 100
+
+char buf_str[SIZE];
 char num_one_str[SIZE];
 char num_two_str[SIZE];
 char operation_str[SIZE];
 char result_str[SIZE];
-char buf_str[SIZE];
+
+int res_read(void)
+{
+	int num_one = 20;
+	int num_two = 30;
+	int result;
+	int len;
+	
+	printk("%s ", num_one_str);
+	printk("%s ", operation_str);
+	printk("%s ", num_two_str);
+	sscanf(num_one_str, "%d", &num_one);
+	sscanf(num_two_str, "%d", &num_two);
+	if (operation_str[0] == '+')
+		result = num_one + num_two;
+	else if (operation_str[0] == '-')
+		result = num_one - num_two;
+	else if (operation_str[0] == '*')
+		result = num_one * num_two;
+	else if (operation_str[0] == '/' || operation_str[0] == ':'){
+		if (num_two == 0){
+			printk("Error:division by zero \n");
+			return 0;
+		}
+		result = num_one / num_two;
+	}
+	else 
+	  return 0;
+	printk("= %d\n",result);
+	sprintf(result_str, "%d\n", result);
+	len = strlen(result_str);
+	return len;
+}
+
+#ifdef HAS_PROC
+
+static struct proc_dir_entry *Num_One;
+static struct proc_dir_entry *Num_Two;
+static struct proc_dir_entry *Operation;
+static struct proc_dir_entry *Result;
 
 int read_simbol(char *buffer, char **buffer_location,
 	      off_t offset, int buffer_length, int *eof, void *data)
@@ -35,34 +80,8 @@ int read_simbol(char *buffer, char **buffer_location,
 int result_read(char *buffer, char **buffer_location,
 	      off_t offset, int buffer_length, int *eof, void *data)
 {
-	int num_one = 20;
-	int num_two = 30;
-	int result;
-	int len;
+	int len = res_read();
 	
-	printk("%s ", num_one_str);
-	printk("%s ", operation_str);
-	printk("%s ", num_two_str);
- 	sscanf(num_one_str, "%d", &num_one);
-	sscanf(num_two_str, "%d", &num_two);
-	if (operation_str[0] == '+')
-		result = num_one + num_two;
-	else if (operation_str[0] == '-')
-		result = num_one - num_two;
-	else if (operation_str[0] == '*')
-		result = num_one * num_two;
-	else if (operation_str[0] == '/' || operation_str[0] == ':'){
-		if (num_two == 0){
-			printk(KERN_ALERT "Error:division by zero \n");
-			return 0;
-		}
-		result = num_one / num_two;
-	}
-	else 
-	  return 0;
-	printk("= %d\n",result);
-	sprintf(result_str, "%d", result);
-	len = strlen(result_str);
 	if (buffer_length < len)
 		return -EINVAL;
 	if (offset > 0)
@@ -72,9 +91,7 @@ int result_read(char *buffer, char **buffer_location,
 	return len;
 }
 
-
-int num_one_write(struct file *file, const char *buffer, unsigned long count,
-		   void *data)
+int write(char *str, const char *buffer, unsigned long count)
 {
 	int len = count;
 	if (copy_from_user(num_one_str, buffer, len))
@@ -82,35 +99,105 @@ int num_one_write(struct file *file, const char *buffer, unsigned long count,
 	return len;
 }
 
+int num_one_write(struct file *file, const char *buffer, unsigned long count,
+		   void *data)
+{
+// 	int len = count;
+// 	if (copy_from_user(num_one_str, buffer, len))
+// 		return -EFAULT;
+	return write(num_one_str, buffer, count);
+}
+
 int num_two_write(struct file *file, const char *buffer, unsigned long count,
 		   void *data)
 {
-	int len = count;
-	if (copy_from_user(num_two_str, buffer, len))
-		return -EFAULT;
-	return len;
+// 	int len = count;
+// 	if (copy_from_user(num_two_str, buffer, len))
+// 		return -EFAULT;
+	return write(num_two_str, buffer, count);
 }
 
 int operation_write(struct file *file, const char *buffer, unsigned long count,
 		   void *data)
 {
-	int len = count;
-	if (copy_from_user(operation_str, buffer, len))
-		return -EFAULT;
-	return len;
+// 	int len = count;
+// 	if (copy_from_user(operation_str, buffer, len))
+// 		return -EFAULT;
+	return write(operation_str, buffer, count);
 }
 
 int result_write(struct file *file, const char *buffer, unsigned long count,
 		   void *data)
 {
-	int len = count;
-	if (copy_from_user(result_str, buffer, len))
-		return -EFAULT;
+// 	int len = count;
+// 	if (copy_from_user(result_str, buffer, len))
+// 		return -EFAULT;
+	return write(result_str, buffer, count);
+}
+#endif
+
+#ifdef HAS_SYS
+static ssize_t show(struct class *class, struct class_attribute *attr, char *buf )
+{
+	int len;
+	strcpy(buf, buf_str);
+	len = strlen(buf);
+	printk("read %d\n", len);
 	return len;
 }
 
-int init_module()
+static ssize_t result_show(struct class *class, struct class_attribute *attr, char *buf )
 {
+	int len = res_read();
+	strcpy(buf, result_str);
+	len = strlen(buf);
+	printk("read %d\n", len);
+	return len;
+}
+
+size_t store(char *str, const char *buf, size_t count)
+{
+	int len = count;
+	printk("write %d\n", len);
+	strncpy(str, buf, len);
+	str[len] = '\0';
+	return len;
+}
+
+static ssize_t result_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count )
+{
+	return store(result_str, buf, count);
+}
+
+static ssize_t num_one_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count )
+{
+	return store(num_one_str, buf, count);
+}
+
+static ssize_t num_two_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count )
+{
+	return store(num_two_str, buf, count);
+}
+
+static ssize_t operation_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count )
+{
+	return store(operation_str, buf, count);
+}
+
+struct class_attribute class_attr_result = __ATTR( result, 0666, &result_show, &result_store);
+struct class_attribute class_attr_num_one = __ATTR( num_one, 0666, &show, &num_one_store);
+struct class_attribute class_attr_num_two = __ATTR( num_two, 0666, &show, &num_two_store);
+struct class_attribute class_attr_operation = __ATTR( operation, 0666, &show, &operation_store);
+
+static struct class *calculator_class;
+
+#endif
+
+
+int init_module(void)
+{
+	int res;
+#ifdef HAS_PROC
 	Num_One = create_proc_entry("num_one", 0666, NULL);
 	if (Num_One == NULL) {
 		remove_proc_entry("num_one", NULL);
@@ -166,18 +253,40 @@ int init_module()
 	Result->gid 	  = 0;
 	Result->size 	  = 37;
 	
+#endif
+#ifdef HAS_SYS
+	calculator_class = class_create(THIS_MODULE, "calculator_class");
+	if (IS_ERR(calculator_class))
+		printk("error class create\n");
+	res = class_create_file(calculator_class, &class_attr_num_one);
+	res = class_create_file(calculator_class, &class_attr_num_two);
+	res = class_create_file(calculator_class, &class_attr_operation);
+	res = class_create_file(calculator_class, &class_attr_result);
+	printk("'calculator' module initialized\n");
+#endif
 	return 0;
 }
 
-void cleanup_module()
+void cleanup_module(void)
 {
+#ifdef HAS_PROC
 	remove_proc_entry("num_one", NULL);
 	remove_proc_entry("num_two", NULL);
 	remove_proc_entry("operation", NULL);
 	remove_proc_entry("result", NULL);
+#endif
+
+#ifdef HAS_SYS
+	class_remove_file(calculator_class, &class_attr_num_one);
+	class_remove_file(calculator_class, &class_attr_num_two);
+	class_remove_file(calculator_class, &class_attr_operation);
+	class_remove_file(calculator_class, &class_attr_result);
+	class_destroy(calculator_class);
+#endif
+	return;
 }
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("max ");
 MODULE_DESCRIPTION("\"Calculator\" minimal module");
-MODULE_VERSION("proc");
+MODULE_VERSION("sys_proc");
