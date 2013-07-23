@@ -8,10 +8,6 @@
 #include <linux/pci.h>
 #include <linux/version.h>
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("max ");
-MODULE_DESCRIPTION("\"Calculator\" minimal module");
-
 #define HAS_PROC
 #define HAS_SYS
 
@@ -28,7 +24,6 @@ int res_read(void)
 	int num_one = 20;
 	int num_two = 30;
 	int result;
-	int len;
 	
 	printk("%s ", num_one_str);
 	printk("%s ", operation_str);
@@ -39,7 +34,7 @@ int res_read(void)
 		result = num_one + num_two;
 	else if (operation_str[0] == '-')
 		result = num_one - num_two;
-	else if (operation_str[0] == '*')
+	else if (operation_str[0] == '.')
 		result = num_one * num_two;
 	else if (operation_str[0] == '/' || operation_str[0] == ':'){
 		if (num_two == 0){
@@ -52,8 +47,7 @@ int res_read(void)
 	  return 0;
 	printk("= %d\n",result);
 	sprintf(result_str, "%d\n", result);
-	len = strlen(result_str);
-	return len;
+	return  strlen(result_str);
 }
 
 #ifdef HAS_PROC
@@ -72,7 +66,7 @@ int read_simbol(char *buffer, char **buffer_location,
 	if (offset > 0) 
 		return 0;
 	printk("%s\n", buf_str);
-	strcpy(buffer,buf_str);
+	strcpy(buffer, buf_str);
 	*eof = 1;
 	return len;
 }
@@ -81,20 +75,19 @@ int result_read(char *buffer, char **buffer_location,
 	      off_t offset, int buffer_length, int *eof, void *data)
 {
 	int len = res_read();
-	
 	if (buffer_length < len)
 		return -EINVAL;
-	if (offset > 0)
+	if (offset > 0) 
 		return 0;
 	strcpy(buffer, result_str);
 	*eof = 1;
 	return len;
 }
 
-int write(char *str, const char *buffer, unsigned long count)
+int get_str_from_user(char *str, const char *buffer, unsigned long count)
 {
 	int len = count;
-	if (copy_from_user(num_one_str, buffer, len))
+	if (copy_from_user(str, buffer, len))
 		return -EFAULT;
 	return len;
 }
@@ -102,42 +95,30 @@ int write(char *str, const char *buffer, unsigned long count)
 int num_one_write(struct file *file, const char *buffer, unsigned long count,
 		   void *data)
 {
-// 	int len = count;
-// 	if (copy_from_user(num_one_str, buffer, len))
-// 		return -EFAULT;
-	return write(num_one_str, buffer, count);
+	return get_str_from_user(num_one_str, buffer, count);
 }
 
 int num_two_write(struct file *file, const char *buffer, unsigned long count,
 		   void *data)
 {
-// 	int len = count;
-// 	if (copy_from_user(num_two_str, buffer, len))
-// 		return -EFAULT;
-	return write(num_two_str, buffer, count);
+	return get_str_from_user(num_two_str, buffer, count);
 }
 
 int operation_write(struct file *file, const char *buffer, unsigned long count,
 		   void *data)
 {
-// 	int len = count;
-// 	if (copy_from_user(operation_str, buffer, len))
-// 		return -EFAULT;
-	return write(operation_str, buffer, count);
+	return get_str_from_user(operation_str, buffer, count);
 }
 
 int result_write(struct file *file, const char *buffer, unsigned long count,
 		   void *data)
 {
-// 	int len = count;
-// 	if (copy_from_user(result_str, buffer, len))
-// 		return -EFAULT;
-	return write(result_str, buffer, count);
+	return get_str_from_user(result_str, buffer, count);
 }
 #endif
 
 #ifdef HAS_SYS
-static ssize_t show(struct class *class, struct class_attribute *attr, char *buf )
+static ssize_t show_symbol(struct class *class, struct class_attribute *attr, char *buf )
 {
 	int len;
 	strcpy(buf, buf_str);
@@ -155,7 +136,7 @@ static ssize_t result_show(struct class *class, struct class_attribute *attr, ch
 	return len;
 }
 
-size_t store(char *str, const char *buf, size_t count)
+size_t store_str_from_user(char *str, const char *buf, size_t count)
 {
 	int len = count;
 	printk("write %d\n", len);
@@ -166,28 +147,28 @@ size_t store(char *str, const char *buf, size_t count)
 
 static ssize_t result_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count )
 {
-	return store(result_str, buf, count);
+	return store_str_from_user(result_str, buf, count);
 }
 
 static ssize_t num_one_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count )
 {
-	return store(num_one_str, buf, count);
+	return store_str_from_user(num_one_str, buf, count);
 }
 
 static ssize_t num_two_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count )
 {
-	return store(num_two_str, buf, count);
+	return store_str_from_user(num_two_str, buf, count);
 }
 
 static ssize_t operation_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count )
 {
-	return store(operation_str, buf, count);
+	return store_str_from_user(operation_str, buf, count);
 }
 
 struct class_attribute class_attr_result = __ATTR( result, 0666, &result_show, &result_store);
-struct class_attribute class_attr_num_one = __ATTR( num_one, 0666, &show, &num_one_store);
-struct class_attribute class_attr_num_two = __ATTR( num_two, 0666, &show, &num_two_store);
-struct class_attribute class_attr_operation = __ATTR( operation, 0666, &show, &operation_store);
+struct class_attribute class_attr_num_one = __ATTR( num_one, 0666, &show_symbol, &num_one_store);
+struct class_attribute class_attr_num_two = __ATTR( num_two, 0666, &show_symbol, &num_two_store);
+struct class_attribute class_attr_operation = __ATTR( operation, 0666, &show_symbol, &operation_store);
 
 static struct class *calculator_class;
 
@@ -253,6 +234,8 @@ int init_module(void)
 	Result->gid 	  = 0;
 	Result->size 	  = 37;
 	
+#else
+	res = -1
 #endif
 #ifdef HAS_SYS
 	calculator_class = class_create(THIS_MODULE, "calculator_class");
@@ -262,7 +245,9 @@ int init_module(void)
 	res = class_create_file(calculator_class, &class_attr_num_two);
 	res = class_create_file(calculator_class, &class_attr_operation);
 	res = class_create_file(calculator_class, &class_attr_result);
-	printk("'calculator' module initialized\n");
+#else
+	if (res == -1)
+		return res;
 #endif
 	return 0;
 }
