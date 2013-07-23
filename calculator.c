@@ -7,9 +7,11 @@
 #include <linux/parport.h>
 #include <linux/pci.h>
 #include <linux/version.h>
+#include <linux/miscdevice.h>
 
-#define HAS_PROC
-#define HAS_SYS
+// #define HAS_PROC
+// #define HAS_SYS
+#define HAS_DEV
 
 #define SIZE 100
 
@@ -174,6 +176,117 @@ static struct class *calculator_class;
 
 #endif
 
+#ifdef HAS_DEV
+
+size_t symbol_out(char *str, size_t count, loff_t *ppos, char *buf)
+{
+	int len = strlen(str);
+	if (count < len)
+		return -EINVAL;
+	if (*ppos != 0)
+		return 0;
+	if (copy_to_user(buf, str, len))
+		return -EINVAL;
+	*ppos = len;
+	return len;
+}
+
+static ssize_t num_one_out(struct file *file, char *buf, size_t count, loff_t *ppos)
+{
+	return symbol_out(num_one_str, count, ppos, buf);
+}
+
+static ssize_t num_two_out(struct file *file, char *buf, size_t count, loff_t *ppos)
+{
+	return symbol_out(num_two_str, count, ppos, buf);
+}
+
+static ssize_t operation_out(struct file *file, char *buf, size_t count, loff_t *ppos)
+{
+	return symbol_out(operation_str, count, ppos, buf);
+}
+
+static ssize_t result_out(struct file *file, char *buf, size_t count, loff_t *ppos)
+{
+	int len = res_read();
+	len = symbol_out(result_str, count, ppos, buf);
+	return len;
+}
+
+size_t symbol_in(char *str, size_t count, loff_t *ppos, const char *buf)
+{
+	int len = count;
+	if (*ppos != 0)
+		return 0;
+	if (copy_from_user(str, buf, len))
+		return -EFAULT;
+	return len;
+}
+
+static ssize_t num_one_in(struct file *file, const char *buf, size_t count, loff_t *ppos)
+{
+	return symbol_in(num_one_str, count, ppos, buf);
+}
+
+static ssize_t num_two_in(struct file *file, const char *buf, size_t count, loff_t *ppos)
+{
+	return symbol_in(num_two_str, count, ppos, buf);
+}
+
+static ssize_t operation_in(struct file *file, const char *buf, size_t count, loff_t *ppos)
+{
+	return symbol_in(operation_str, count, ppos, buf);
+}
+
+static ssize_t result_in(struct file *file, const char *buf, size_t count, loff_t *ppos)
+{
+	return symbol_in(result_str, count, ppos, buf);
+}
+
+static const struct file_operations num_one_fops = {
+	.owner		= THIS_MODULE,
+	.read		= num_one_out,
+	.write		= num_one_in,
+};
+static const struct file_operations num_two_fops = {
+	.owner		= THIS_MODULE,
+	.read		= num_two_out,
+	.write		= num_two_in,
+};
+static const struct file_operations operation_fops = {
+	.owner		= THIS_MODULE,
+	.read		= operation_out,
+	.write		= operation_in,
+};
+static const struct file_operations result_fops = {
+	.owner		= THIS_MODULE,
+	.read		= result_out,
+	.write		= result_in,
+};
+
+static struct miscdevice num_one_dev = {
+	MISC_DYNAMIC_MINOR,
+	"num_one",
+	&num_one_fops,
+};
+static struct miscdevice num_two_dev = {
+	MISC_DYNAMIC_MINOR,
+	"num_two",
+	&num_two_fops,
+};
+static struct miscdevice operation_dev = {
+	MISC_DYNAMIC_MINOR,
+	"operation",
+	&operation_fops,
+};
+static struct miscdevice result_dev = {
+	MISC_DYNAMIC_MINOR,
+	"result",
+	&result_fops,
+};
+
+#endif
+
 
 int init_module(void)
 {
@@ -235,7 +348,7 @@ int init_module(void)
 	Result->size 	  = 37;
 	
 #else
-	res = -1
+	res = -1;
 #endif
 #ifdef HAS_SYS
 	calculator_class = class_create(THIS_MODULE, "calculator_class");
@@ -247,6 +360,24 @@ int init_module(void)
 	res = class_create_file(calculator_class, &class_attr_result);
 #else
 	if (res == -1)
+		res--;
+#endif
+
+#ifdef HAS_DEV
+	res = misc_register(&num_one_dev);
+	if(res)
+		printk("Unable to register \"num_one\" misc device\n");
+	res = misc_register(&num_two_dev);
+	if(res)
+		printk("Unable to register \"num_two\" misc device\n");
+	res = misc_register(&operation_dev);
+	if(res)
+		printk("Unable to register \"operation\" misc device\n");
+	res = misc_register(&result_dev);
+	if(res)
+		printk("Unable to register \"result\" misc device\n");	
+#else
+	if (res == -2)
 		return res;
 #endif
 	return 0;
@@ -268,10 +399,17 @@ void cleanup_module(void)
 	class_remove_file(calculator_class, &class_attr_result);
 	class_destroy(calculator_class);
 #endif
+	
+#ifdef HAS_DEV
+	misc_deregister(&num_one_dev);
+	misc_deregister(&num_two_dev);
+	misc_deregister(&operation_dev);
+	misc_deregister(&result_dev);
+#endif
 	return;
 }
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("max ");
 MODULE_DESCRIPTION("\"Calculator\" minimal module");
-MODULE_VERSION("sys_proc");
+MODULE_VERSION("sys_proc_dev");
